@@ -13,12 +13,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up JDK 11
+      # 1) Use JDK 17 for sdkmanager (cmdline-tools 16 requires it)
+      - name: Set up JDK 17 (for Android SDK tools)
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "11"
-          cache: gradle
+          java-version: "17"
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
@@ -26,6 +26,14 @@ jobs:
       - name: Install SDK packages (pin)
         run: |
           sdkmanager "platform-tools" "platforms;android-31" "build-tools;31.0.0"
+
+      # 2) Switch to JDK 11 for Gradle/AGP build
+      - name: Set up JDK 11 (for Gradle build)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "11"
+          cache: gradle
 
       - name: Build debug APK
         run: bash ./gradlew assembleDebug --stacktrace
