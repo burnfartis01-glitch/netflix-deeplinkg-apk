@@ -13,36 +13,41 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Use JDK 17 ONLY for sdkmanager (new cmdline-tools require it)
-      - name: Set up JDK 17 (for sdkmanager)
+      # JDK 17 for sdkmanager/cmdline-tools
+      - name: Set up JDK 17 (for Android SDK tools)
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
 
-      - name: Set ANDROID_SDK_ROOT
+      - name: Install Android commandline-tools into clean SDK dir
         run: |
-          echo "ANDROID_SDK_ROOT=/usr/local/lib/android/sdk" >> $GITHUB_ENV
-          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> $GITHUB_ENV
+          set -eux
 
-      - name: Install Android SDK packages (pin)
-        run: |
-          echo "JAVA_HOME=$JAVA_HOME"
-          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
-          ls -la "$ANDROID_SDK_ROOT/cmdline-tools" || true
+          export ANDROID_SDK_ROOT="$HOME/android-sdk"
+          export ANDROID_HOME="$ANDROID_SDK_ROOT"
+          mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
 
-          # Use the preinstalled sdkmanager (or latest)
-          SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
-          if [ ! -x "$SDKMANAGER" ]; then
-            SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/bin/sdkmanager"
-          fi
+          # Download commandline tools (latest)
+          curl -fsSL -o /tmp/cmdline-tools.zip \
+            https://dl.google.com/android/repository/commandlinetools-linux-12266719_latest.zip
 
-          "$SDKMANAGER" --version
-          yes | "$SDKMANAGER" --licenses
+          unzip -q /tmp/cmdline-tools.zip -d /tmp/cmdline-tools
+          mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools/latest"
+          mv /tmp/cmdline-tools/cmdline-tools/* "$ANDROID_SDK_ROOT/cmdline-tools/latest/"
 
-          "$SDKMANAGER" "platform-tools" "platforms;android-31" "build-tools;31.0.0"
+          export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH"
 
-      # Switch to JDK 11 for your older Gradle/AGP build
+          yes | sdkmanager --licenses
+
+          # Install ONLY what old AGP needs
+          sdkmanager "platform-tools" "platforms;android-31" "build-tools;31.0.0"
+
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
+          echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
+          echo "PATH=$PATH" >> $GITHUB_ENV
+
+      # Switch to JDK 11 for Gradle/AGP build
       - name: Set up JDK 11 (for Gradle build)
         uses: actions/setup-java@v4
         with:
@@ -51,7 +56,9 @@ jobs:
           cache: gradle
 
       - name: Build debug APK
-        run: bash ./gradlew assembleDebug --stacktrace
+        run: |
+          echo "Using ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+          bash ./gradlew assembleDebug --stacktrace
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
