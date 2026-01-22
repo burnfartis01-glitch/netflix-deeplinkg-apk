@@ -20,6 +20,14 @@ jobs:
           java-version: "11"
           cache: gradle
 
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages (pin)
+        run: |
+          sdkmanager --version
+          sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+
       - name: Build debug APK
         run: bash ./gradlew assembleDebug --stacktrace
 
