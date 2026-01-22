@@ -1,5 +1,9 @@
-name: Build Android APK
-
+- name: Set up JDK
+  uses: actions/setup-java@v4
+  with:
+    distribution: temurin
+    java-version: "11"
+    cache: gradle
 on:
   push:
     branches: [ "main" ]
