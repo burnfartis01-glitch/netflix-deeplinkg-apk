@@ -27,8 +27,11 @@ class MainActivity : Activity() {
     }
 
     private fun openNetflixTitle(titleId: String) {
-        val deepLink = Uri.parse("nflx://www.netflix.com/title/$titleId")
-        val intent = Intent(Intent.ACTION_VIEW, deepLink)
+        val deepLink = Uri.parse("https://www.netflix.com/title/$titleId")
+        val intent = Intent(Intent.ACTION_VIEW, url).apply {
+            addCategory(Intent.CATEGORY_BROWSABLE)
+            setPackage("com.netflix.mediaclient") // force Netflix if installed
+        }
 
         try {
             startActivity(intent)
