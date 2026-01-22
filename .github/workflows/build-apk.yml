@@ -13,21 +13,36 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 1) Use JDK 17 for sdkmanager (cmdline-tools 16 requires it)
-      - name: Set up JDK 17 (for Android SDK tools)
+      # Use JDK 17 ONLY for sdkmanager (new cmdline-tools require it)
+      - name: Set up JDK 17 (for sdkmanager)
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install SDK packages (pin)
+      - name: Set ANDROID_SDK_ROOT
         run: |
-          sdkmanager "platform-tools" "platforms;android-31" "build-tools;31.0.0"
+          echo "ANDROID_SDK_ROOT=/usr/local/lib/android/sdk" >> $GITHUB_ENV
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> $GITHUB_ENV
 
-      # 2) Switch to JDK 11 for Gradle/AGP build
+      - name: Install Android SDK packages (pin)
+        run: |
+          echo "JAVA_HOME=$JAVA_HOME"
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+          ls -la "$ANDROID_SDK_ROOT/cmdline-tools" || true
+
+          # Use the preinstalled sdkmanager (or latest)
+          SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then
+            SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/bin/sdkmanager"
+          fi
+
+          "$SDKMANAGER" --version
+          yes | "$SDKMANAGER" --licenses
+
+          "$SDKMANAGER" "platform-tools" "platforms;android-31" "build-tools;31.0.0"
+
+      # Switch to JDK 11 for your older Gradle/AGP build
       - name: Set up JDK 11 (for Gradle build)
         uses: actions/setup-java@v4
         with:
